@@ -28,10 +28,13 @@ def next_sequence(list):
     i = 0
     j = len(list)
     all_seen = [False] * j
-
+    # print("list is {0}".format(list))
     while(i < j):
+        # print("all_seen is {0}".format(all_seen))
         if (not all_seen[i]):
+            # print("yielding {0}".format(i))
             seen = yield i
+            # print("Matched {0} for {1}".format(seen, i))
             for c in seen:
                 all_seen[c] = True
         all_seen[i] = True
@@ -54,6 +57,13 @@ def find_super_sequences(seq, possibles):
     return [(i, x) for (i, x) in enumerate(possibles) if x[:len(seq)] == seq]
 
 
+def validate_counts(all_sequences, groupings):
+    count = reduce(lambda x, y: x + len(y), groupings.values(), 0)
+    uniq_supersequences = set(
+            reduce(lambda x, y: x + y, groupings.values(), []))
+    return count == len(uniq_supersequences) and count == len(all_sequences)
+
+
 if __name__ == '__main__':
     all_sequences = read_and_sort()
     groupings = {}
@@ -69,19 +79,18 @@ if __name__ == '__main__':
     # Now go through all the values of the iterator until there are no more.
     while True:
         try:
-            idx = iterator.send([x[0] for x in children])
+            idx = iterator.send([x[0] + idx for x in children])
             key = all_sequences[idx]
             children = find_super_sequences(key, all_sequences[idx:])
             groupings[key] = [x[1] for x in children]
         except StopIteration:
             break
 
-    pp = pprint.PrettyPrinter(indent=4)
-    pprint._sorted = lambda x: x
-    pp.pprint(groupings)
-
-    count = reduce(lambda x, y: x + len(y), groupings.values(), 0)
-    uniq_supersequences = set(
-            reduce(lambda x, y: x + y, groupings.values(), []))
-    print("Found {0} values for {1} rows".format(count, len(all_sequences)))
-    print("There are {0} uniq supersequences".format(len(uniq_supersequences)))
+    if (validate_counts(all_sequences, groupings)):
+        pp = pprint.PrettyPrinter(indent=4)
+        pprint._sorted = lambda x: x
+        pp.pprint(groupings)
+    else:
+        print("Found {0} values for {1} rows".format(count, len(all_sequences)))
+        print("There are {0} uniq supersequences".format(len(uniq_supersequences)))
+        sys.exit(1)
