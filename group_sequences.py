@@ -47,21 +47,33 @@ def read_and_sort():
     # the list by string length.
     # https://docs.python.org/2/library/functions.html#cmp
     all_sequences = list(set(map(lambda x: x.split('\t')[0], read_in())))
-    all_sequences.sort(lambda x, y: cmp(len(x), len(y)))
+    all_sequences.sort()
     return all_sequences
 
 
 def find_super_sequences(seq, possibles):
-    # This is against PEP-8, but does save time and since the main time sink
-    # in this script is .startswith, then it's worth it
-    return [(i, x) for (i, x) in enumerate(possibles) if x[:len(seq)] == seq]
+    """
+    Returns a list of tuples for matched supersequences. The tuples consist of
+    the index in possibles, and the value itself.
+    """
+    found = list()
+    i = 0
+    while (i < len(possibles)):
+        p = possibles[i]
+        # This is against PEP-8, but does save time and since the main time
+        # sink in this script is .startswith, then it's worth it
+        if (p[:len(seq)] == seq):
+            found.append((i, p))
+        else:
+            break
+        i = i + 1
+    return found
 
 
 def validate_counts(all_sequences, groupings):
     count = reduce(lambda x, y: x + len(y), groupings.values(), 0)
-    uniq_supersequences = set(
-            reduce(lambda x, y: x + y, groupings.values(), []))
-    return count == len(uniq_supersequences) and count == len(all_sequences)
+    uniq = set(reduce(lambda x, y: x + y, groupings.values(), []))
+    return count == len(uniq) and count == len(all_sequences)
 
 
 if __name__ == '__main__':
