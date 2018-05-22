@@ -87,8 +87,10 @@ if __name__ == '__main__':
             break
 
     if (validate_counts(all_sequences, groupings)):
+        for k, v in groupings.items():
+            v.sort()
+
         pp = pprint.PrettyPrinter(indent=4)
-        pprint._sorted = lambda x: x
         pp.pprint(groupings)
     else:
         print("Found {0} values for {1} rows".format(count, len(all_sequences)))
