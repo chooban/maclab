@@ -41,16 +41,6 @@ def next_sequence(list):
         i = i + 1
 
 
-def read_and_sort():
-    # Read all relevant strings from stdin, remove duplicates by passing
-    # to a set, and then converting back to a list. Then use cmp to order
-    # the list by string length.
-    # https://docs.python.org/2/library/functions.html#cmp
-    all_sequences = list(set(map(lambda x: x.split('\t')[0], read_in())))
-    all_sequences.sort()
-    return all_sequences
-
-
 def find_super_sequences(seq, possibles):
     """
     Returns a list of tuples for matched supersequences. The tuples consist of
@@ -73,11 +63,17 @@ def find_super_sequences(seq, possibles):
 def validate_counts(all_sequences, groupings):
     count = reduce(lambda x, y: x + len(y), groupings.values(), 0)
     uniq = set(reduce(lambda x, y: x + y, groupings.values(), []))
-    return count == len(uniq) and count == len(all_sequences)
+    print("Found {0} values for {1} rows".format(count, len(all_sequences)))
+    print("There are {0} uniq supersequences".format(len(uniq)))
+    return count == len(all_sequences)
 
 
 if __name__ == '__main__':
-    all_sequences = read_and_sort()
+    all_data = map(lambda x: x.split('\t'), read_in())
+    sorted(all_data, key=lambda x: x[0])
+
+    all_sequences = list(set(map(lambda x: x[0], all_data)))
+    all_sequences.sort()
     groupings = {}
 
     # Process the first iterator value by calling next, as we don't currently
@@ -86,7 +82,7 @@ if __name__ == '__main__':
     idx = next(iterator, None)
     key = all_sequences[idx]
     children = find_super_sequences(key, all_sequences[idx:])
-    groupings[key] = [x[1] for x in children]
+    groupings[key] = [all_sequences[x[0]] for x in children]
 
     # Now go through all the values of the iterator until there are no more.
     while True:
@@ -94,17 +90,15 @@ if __name__ == '__main__':
             idx = iterator.send([x[0] + idx for x in children])
             key = all_sequences[idx]
             children = find_super_sequences(key, all_sequences[idx:])
-            groupings[key] = [x[1] for x in children]
+            groupings[key] = [all_sequences[x[0] + idx] for x in children]
         except StopIteration:
             break
 
-    if (validate_counts(all_sequences, groupings)):
-        for k, v in groupings.items():
-            v.sort()
-
-        pp = pprint.PrettyPrinter(indent=4)
-        pp.pprint(groupings)
-    else:
-        print("Found {0} values for {1} rows".format(count, len(all_sequences)))
-        print("There are {0} uniq supersequences".format(len(uniq_supersequences)))
+    if (not validate_counts(all_sequences, groupings)):
+        print("Invalid!")
         sys.exit(1)
+
+    # groupings = dict(map(lambda kv: (kv[0], ***), groupings.iteritems()))
+
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(groupings)
