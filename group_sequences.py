@@ -1,5 +1,8 @@
+import csv
 import sys
 import pprint
+import ast
+from operator import itemgetter
 
 
 def read_in():
@@ -8,64 +11,33 @@ def read_in():
     end of the file
     """
     lines = [x.strip() for x in sys.stdin.readlines()]
-    lines.pop()
     return lines
 
 
-def next_sequence(list):
-    """
-    Generator function to allow for custom iteration through a list of
-    strings.
-
-    For use when you want to be able to skip certain elements. Elements to be
-    skipped on subsequent iterations can be passed via the 'send' method.
-
-    The indices of the elements to be skipped should be provided. This allows
-    a very fast lookup on an array of booleans.
-
-    https://jeffknupp.com/blog/2013/04/07/improve-your-python-yield-and-generators-explained/
-    """
-    i = 0
-    j = len(list)
-    all_seen = [False] * j
-    # print("list is {0}".format(list))
-    while(i < j):
-        # print("all_seen is {0}".format(all_seen))
-        if (not all_seen[i]):
-            # print("yielding {0}".format(i))
-            seen = yield i
-            # print("Matched {0} for {1}".format(seen, i))
-            for c in seen:
-                all_seen[c] = True
-        all_seen[i] = True
-        i = i + 1
+# given a sequence of tuples like [(3,'c',6),(7,'a',2),(88,'c',4),(45,'a',0)],
+# returns a dict grouping tuples by idx-th element - with idx=1 we have:
+# if merge is True {'c':(3,6,88,4),     'a':(7,2,45,0)}
+# if merge is False {'c':((3,6),(88,4)), 'a':((7,2),(45,0))}
+def group_by(seqs, idx=0, merge=False):
+    d = dict()
+    for seq in seqs:
+        k = seq[idx]
+        v = d.get(k, tuple()) + (seq[:idx]+seq[idx+1:] if merge else (seq[:idx]+seq[idx+1:],))
+        d.update({k: v})
+    return d
 
 
-def find_super_sequences(seq, possibles):
-    """
-    Returns a list of tuples for matched supersequences. The tuples consist of
-    the index in possibles, and the value itself.
-    """
-    found = list()
-    i = 0
-    while (i < len(possibles)):
-        p = possibles[i]
-        # This is against PEP-8, but does save time and since the main time
-        # sink in this script is .startswith, then it's worth it
-        if (p[:len(seq)] == seq):
-            found.append((i, p))
-        else:
-            break
-        i = i + 1
-    return found
+def build_rows(r):
+    rows = []
+    print(r)
+    locations = ast.literal_eval(r[4])
 
+    if len(locations) == 0:
+        locations.append('NONE')
 
-def validate_counts(all_sequences, groupings):
-    count = reduce(lambda x, y: x + len(y), groupings.values(), 0)
-    uniq = set(reduce(lambda x, y: x + y, groupings.values(), []))
-    print("Found {0} values for {1} rows".format(count, len(all_sequences)))
-    print("There are {0} uniq supersequences".format(len(uniq)))
-    return count == len(all_sequences)
+    for l in locations:
+        rows.append((r[0], r[1], r[2], r[3], l))
+    return rows
 
 
 if __name__ == '__main__':
@@ -76,29 +48,28 @@ if __name__ == '__main__':
     all_sequences.sort()
     groupings = {}
 
-    # Process the first iterator value by calling next, as we don't currently
-    # have any previously seen values to pass to it.
-    iterator = next_sequence(all_sequences)
-    idx = next(iterator, None)
-    key = all_sequences[idx]
-    children = find_super_sequences(key, all_sequences[idx:])
-    groupings[key] = [all_sequences[x[0]] for x in children]
+    seed = all_data[0][0]
+    groupings[seed] = []
 
-    # Now go through all the values of the iterator until there are no more.
-    while True:
-        try:
-            idx = iterator.send([x[0] + idx for x in children])
-            key = all_sequences[idx]
-            children = find_super_sequences(key, all_sequences[idx:])
-            groupings[key] = [all_sequences[x[0] + idx] for x in children]
-        except StopIteration:
-            break
+    sortkeyfn = itemgetter(4)
 
-    if (not validate_counts(all_sequences, groupings)):
-        print("Invalid!")
-        sys.exit(1)
+    for r in all_data:
+        if (r[0][:len(seed)] == seed):
+            groupings[seed] = groupings[seed] + build_rows(r)
+        else:
+            seed = r[0]
+            groupings[seed] = build_rows(r)
 
-    # groupings = dict(map(lambda kv: (kv[0], ***), groupings.iteritems()))
+    rows = []
+    for seed, subsequences in groupings.iteritems():
+        grouped = group_by(subsequences, idx=4)
+        for location, elements in grouped.iteritems():
+            count = reduce(lambda x, y: x + int(y[3]), elements, 0)
+            sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
+            sequences.sort()
+            t = (seed, count, location, sequences)
+            rows = rows + [t]
 
-    pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(groupings)
+    with open('output.tsv', 'w') as tsvfile:
+        writer = csv.writer(tsvfile, delimiter='\t')
+        writer.writerows(rows)
