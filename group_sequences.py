@@ -1,14 +1,12 @@
 import csv
 import sys
-import pprint
 import ast
 from operator import itemgetter
 
 
 def read_in():
     """Read all lines from stdin
-    Strips newline characters from each line, and removes the empty line at the
-    end of the file
+    Strips newline characters from each line
     """
     lines = [x.strip() for x in sys.stdin.readlines()]
     return lines
@@ -22,21 +20,22 @@ def group_by(seqs, idx=0, merge=False):
     d = dict()
     for seq in seqs:
         k = seq[idx]
-        v = d.get(k, tuple()) + (seq[:idx]+seq[idx+1:] if merge else (seq[:idx]+seq[idx+1:],))
+        v = (d.get(k, tuple()) + (seq[:idx]+seq[idx+1:]
+             if merge
+             else (seq[:idx] + seq[idx + 1:], )))
         d.update({k: v})
     return d
 
 
 def build_rows(r):
     rows = []
-    print(r)
     locations = ast.literal_eval(r[4])
 
     if len(locations) == 0:
         locations.append('NONE')
 
     for l in locations:
-        rows.append((r[0], r[1], r[2], r[3], l))
+        rows.append((r[0], int(r[1]), float(r[2]), int(r[3]), l))
     return rows
 
 
@@ -64,7 +63,7 @@ if __name__ == '__main__':
     for seed, subsequences in groupings.iteritems():
         grouped = group_by(subsequences, idx=4)
         for location, elements in grouped.iteritems():
-            count = reduce(lambda x, y: x + int(y[3]), elements, 0)
+            count = reduce(lambda x, y: x + y[3], elements, 0)
             sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
             sequences.sort()
             t = (seed, count, location, sequences)
