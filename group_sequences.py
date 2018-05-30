@@ -4,6 +4,17 @@ import ast
 from operator import itemgetter
 
 
+def progress(count, total, status=''):
+    bar_len = 60
+    filled_len = int(round(bar_len * count / float(total)))
+
+    percents = round(100.0 * count / float(total), 1)
+    bar = '=' * filled_len + '-' * (bar_len - filled_len)
+
+    sys.stdout.write('[%s] %s%s ...%s\r' % (bar, percents, '%', status))
+    sys.stdout.flush()
+
+
 def read_in():
     """Read all lines from stdin
     Strips newline characters from each line
@@ -57,6 +68,7 @@ if __name__ == '__main__':
             seed = r[0]
             groupings[seed] = build_rows(r)
 
+    row_count = len([item for sublist in groupings.values() for item in sublist])
     rows = []
     for seed, subsequences in groupings.iteritems():
         grouped = group_by(subsequences, idx=4)
@@ -66,6 +78,9 @@ if __name__ == '__main__':
             sequences.sort()
             t = (seed, count, location, sequences)
             rows = rows + [t]
+            progress(len(rows), row_count, status='Reticulating splines...')
+
+    progress(row_count, row_count, status='Reticulating splines...')
 
     with open('output.tsv', 'w') as tsvfile:
         writer = csv.writer(tsvfile, delimiter='\t')
