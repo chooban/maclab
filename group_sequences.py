@@ -20,7 +20,7 @@ def group_by(seqs, idx=0, merge=False):
     d = dict()
     for seq in seqs:
         k = seq[idx]
-        v = (d.get(k, tuple()) + (seq[:idx]+seq[idx+1:]
+        v = (d.get(k, tuple()) + (seq[:idx] + seq[idx + 1:]
              if merge
              else (seq[:idx] + seq[idx + 1:], )))
         d.update({k: v})
@@ -41,10 +41,8 @@ def build_rows(r):
 
 if __name__ == '__main__':
     all_data = map(lambda x: x.split('\t'), read_in())
-    sorted(all_data, key=lambda x: x[0])
+    all_data = sorted(all_data, key=lambda x: x[0])
 
-    all_sequences = list(set(map(lambda x: x[0], all_data)))
-    all_sequences.sort()
     groupings = {}
 
     seed = all_data[0][0]
