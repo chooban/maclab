@@ -1,3 +1,4 @@
+from __future__ import print_function
 import csv
 import sys
 import ast
@@ -51,8 +52,13 @@ def build_rows(r):
 
 
 if __name__ == '__main__':
+    print('Reading input file...', end='')
     all_data = map(lambda x: x.split('\t'), read_in())
+    print('done')
+
+    print('Sorting rows...', end='')
     all_data = sorted(all_data, key=lambda x: x[0])
+    print('done')
 
     groupings = {}
 
@@ -61,27 +67,35 @@ if __name__ == '__main__':
 
     sortkeyfn = itemgetter(4)
 
+    i = 0
     for r in all_data:
         if (r[0][:len(seed)] == seed):
             groupings[seed] = groupings[seed] + build_rows(r)
         else:
             seed = r[0]
             groupings[seed] = build_rows(r)
+        i = i + 1
+        progress(i, len(all_data), status='finding locations')
 
-    row_count = len([item for sublist in groupings.values() for item in sublist])
-    rows = []
+    sys.stdout.write('\r')
+    sys.stdout.flush()
+
+    i = 0
     for seed, subsequences in groupings.iteritems():
+        rows = []
         grouped = group_by(subsequences, idx=4)
+
         for location, elements in grouped.iteritems():
             count = reduce(lambda x, y: x + y[3], elements, 0)
             sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
             sequences.sort()
             t = (seed, count, location, sequences)
             rows = rows + [t]
-            progress(len(rows), row_count, status='Reticulating splines...')
 
-    progress(row_count, row_count, status='Reticulating splines...')
+        with open('output.tsv', 'w' if i is 0 else 'a') as tsvfile:
+            writer = csv.writer(tsvfile, delimiter='\t')
+            writer.writerows(rows)
 
-    with open('output.tsv', 'w') as tsvfile:
-        writer = csv.writer(tsvfile, delimiter='\t')
-        writer.writerows(rows)
+        i = i + 1
+        progress(i, len(groupings.keys()), status='grouping by seed')
+    print('Done')
