@@ -1,8 +1,8 @@
 from __future__ import print_function
+from functools import reduce
 import csv
 import sys
 import ast
-from operator import itemgetter
 
 
 def progress(count, total, status=''):
@@ -39,8 +39,7 @@ def group_by(seqs, idx=0, merge=False):
     return d
 
 
-def build_rows(r):
-    rows = []
+def build_rows(rows, r):
     locations = ast.literal_eval(r[4])
 
     if len(locations) == 0:
@@ -48,6 +47,18 @@ def build_rows(r):
 
     for l in locations:
         rows.append((r[0], int(r[1]), float(r[2]), int(r[3]), l))
+
+
+def process_seed(seed, subsequences):
+    rows = []
+    grouped = group_by(subsequences, idx=4)
+
+    for location, elements in grouped.items():
+        count = reduce(lambda x, y: x + y[3], elements, 0)
+        sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
+        sequences.sort()
+        t = (seed, count, location, sequences)
+        rows = rows + [t]
     return rows
 
 
@@ -60,42 +71,24 @@ if __name__ == '__main__':
     all_data = sorted(all_data, key=lambda x: x[0])
     print('done')
 
-    groupings = {}
-
     seed = all_data[0][0]
-    groupings[seed] = []
-
-    sortkeyfn = itemgetter(4)
 
     i = 0
+    first = True
+    rows = list()
     for r in all_data:
         if (r[0][:len(seed)] == seed):
-            groupings[seed] = groupings[seed] + build_rows(r)
+            build_rows(rows, r)
         else:
+            processed = process_seed(seed, rows)
+
+            with open('output.tsv', 'w' if first is True else 'a') as tsvfile:
+                writer = csv.writer(tsvfile, delimiter='\t')
+                writer.writerows(processed)
+            first = False
+
             seed = r[0]
-            groupings[seed] = build_rows(r)
+            rows[:] = []
+            build_rows(rows, r)
+            progress(i, len(all_data), status='finding locations')
         i = i + 1
-        progress(i, len(all_data), status='finding locations')
-
-    sys.stdout.write('\r')
-    sys.stdout.flush()
-
-    i = 0
-    for seed, subsequences in groupings.iteritems():
-        rows = []
-        grouped = group_by(subsequences, idx=4)
-
-        for location, elements in grouped.iteritems():
-            count = reduce(lambda x, y: x + y[3], elements, 0)
-            sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
-            sequences.sort()
-            t = (seed, count, location, sequences)
-            rows = rows + [t]
-
-        with open('output.tsv', 'w' if i is 0 else 'a') as tsvfile:
-            writer = csv.writer(tsvfile, delimiter='\t')
-            writer.writerows(rows)
-
-        i = i + 1
-        progress(i, len(groupings.keys()), status='grouping by seed')
-    print('Done')
