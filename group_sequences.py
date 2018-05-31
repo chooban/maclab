@@ -43,26 +43,28 @@ def build_rows(rows, r):
     locations = ast.literal_eval(r[4])
 
     if len(locations) == 0:
-        locations.append('NONE')
+        locations.append('NaN')
 
     for l in locations:
         rows.append((r[0], int(r[1]), float(r[2]), int(r[3]), l))
 
 
-def process_seed(seed, subsequences):
-    rows = []
+def process_seed(seed, subsequences, cutoff):
+    rows = list()
     grouped = group_by(subsequences, idx=4)
 
     for location, elements in grouped.items():
         count = reduce(lambda x, y: x + y[3], elements, 0)
-        sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
-        sequences.sort()
-        t = (seed, count, location, sequences)
-        rows = rows + [t]
+        if (count > cutoff):
+            sequences = list(set(reduce(lambda x, y: x + [y[0]], elements, [])))
+            sequences.sort()
+            t = (seed, count, location, sequences)
+            rows.append(t)
     return rows
 
 
 if __name__ == '__main__':
+    COUNT_CUTOFF = 50
     print('Reading input file...', end='')
     all_data = map(lambda x: x.split('\t'), read_in())
     print('done')
@@ -80,7 +82,7 @@ if __name__ == '__main__':
         if (r[0][:len(seed)] == seed):
             build_rows(rows, r)
         else:
-            processed = process_seed(seed, rows)
+            processed = process_seed(seed, rows, COUNT_CUTOFF)
 
             with open('output.tsv', 'w' if first is True else 'a') as tsvfile:
                 writer = csv.writer(tsvfile, delimiter='\t')

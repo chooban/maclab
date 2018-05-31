@@ -1,3 +1,3 @@
 #! /bin/bash
 
-cat segmentaa | python3 group_sequences.py
+cat segmentaa | python group_sequences.py
