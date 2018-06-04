@@ -1,5 +1,5 @@
 from __future__ import print_function
-from functools import reduce, partial
+from functools import partial
 from multiprocessing import Pool
 import csv
 import sys
@@ -34,16 +34,23 @@ def read_in():
 def write(orphan, filename, total):
     global PROGRESS
     PROGRESS = PROGRESS + 1
+    # Could potentially use a buffer to build up a collection of rows
+    # rather than writing one at a time
     with open('orphan_output.tsv', 'a') as tsvfile:
         writer = csv.writer(tsvfile, delimiter='\t')
         writer.writerow(orphan)
     progress(PROGRESS, total, 'grouping orphans')
 
 
-def process_orphan(idx, orphan, orphans):
-    reducer = partial(count_abundance_if_match, orphan[0])
-    orphan_data = reduce(reducer, orphans[idx:], ([], 0))
-    return (orphan[0], orphan[1], orphan_data[1], orphan_data[0])
+def process_orphan(idx, orphan):
+    global ORPHANS
+    acc = ([], 0)
+    to_check = ORPHANS[idx:]
+    for curr in to_check:
+        if orphan[0].startswith(curr[0]):
+            acc = (acc[0] + [curr], acc[1] + curr[1])
+        # I'm sure there's some early exit scenario here
+    return (orphan[0], orphan[1], acc[1], acc[0])
 
 
 if __name__ == '__main__':
@@ -55,14 +62,17 @@ if __name__ == '__main__':
         lambda x: (x[0], int(x[1])),
         map(lambda x: x.split('\t'), read_in())
     )
-    orphans = sorted(orphans, key=lambda x: len(x[0]), reverse=True)
-    p = partial(process_orphan, orphans=orphans)
-    cb = partial(write, filename=filename, total=len(orphans))
+
+    # Global variables for sharing data between processes. This
+    # vastly reduces the overhead of each process and speeds it up
+    # a lot.
+    ORPHANS = sorted(orphans, key=lambda x: x[0], reverse=True)
     PROGRESS = 0
+    cb = partial(write, filename=filename, total=len(ORPHANS))
 
     pool = Pool(os.cpu_count() - 1)
-    for i, x in enumerate(orphans):
-        pool.apply_async(p, args=(i, x), callback=cb)
+    for i, x in enumerate(ORPHANS):
+        pool.apply_async(process_orphan, args=(i, x), callback=cb, error_callback=print)
 
     print("Closing pool...")
     pool.close()
