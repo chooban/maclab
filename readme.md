@@ -3,7 +3,14 @@ Input format: TSV
 Input columns: ...
 
 Output format: TSV
-Ouptut columns: 
+Output columns: 
+
+## Count Subsequences
+Input format: TSV
+Input columns: Sequence, Count
+
+Output format: TSV
+Output columns: Seed sequence, [all super sequences], total count
 
 ## Orphan Grouping
 Input format: TSV
