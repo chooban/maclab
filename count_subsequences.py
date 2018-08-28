@@ -1,8 +1,6 @@
 from __future__ import print_function
-from functools import reduce
 import csv
 import sys
-import ast
 
 
 def progress(count, total, status=''):
